@@ -45,27 +45,27 @@ type ClusterConfig struct {
 	// If it is 0 or unset (the default) then the driver will attempt to discover the
 	// highest supported protocol for the cluster. In clusters with nodes of different
 	// versions the protocol selected is not defined (ie, it can be any of the supported in the cluster)
-	ProtoVersion                int
-	Timeout                     time.Duration                            // connection timeout (default: 600ms)
-	ConnectTimeout              time.Duration                            // initial connection timeout, used during initial dial to server (default: 600ms)
-	Port                        int                                      // port (default: 9042)
-	Keyspace                    string                                   // initial keyspace (optional)
-	NumConns                    int                                      // number of connections per host (default: 2)
-	Consistency                 Consistency                              // default consistency level (default: Quorum)
-	Compressor                  Compressor                               // compression algorithm (default: nil)
-	Authenticator               Authenticator                            // authenticator (default: nil)
-	AuthProvider                func(h *HostInfo) (Authenticator, error) // an authenticator factory. Can be used to create alternative authenticators (default: nil)
-	RetryPolicy                 RetryPolicy                              // Default retry policy to use for queries (default: 0)
-	ConvictionPolicy            ConvictionPolicy                         // Decide whether to mark host as down based on the error and host info (default: SimpleConvictionPolicy)
-	ReconnectionPolicy          ReconnectionPolicy                       // Default reconnection policy to use for reconnecting before trying to mark host as down (default: see below)
-	SocketKeepalive             time.Duration                            // The keepalive period to use, enabled if > 0 (default: 0)
-	MaxPreparedStmts            int                                      // Sets the maximum cache size for prepared statements globally for gocql (default: 1000)
-	MaxRoutingKeyInfo           int                                      // Sets the maximum cache size for query info about statements for each session (default: 1000)
-	PageSize                    int                                      // Default page size to use for created sessions (default: 5000)
-	SerialConsistency           SerialConsistency                        // Sets the consistency for the serial part of queries, values can be either SERIAL or LOCAL_SERIAL (default: unset)
-	SslOpts                     *SslOptions                              // SSlOpts to use for this cluster. Ignored if SecureConnectBundleFilename is set.
-	SecureConnectBundleFilename string                                   // Sets the Secure Connect Bundle
-	DefaultTimestamp            bool                                     // Sends a client side timestamp for all requests which overrides the timestamp at which it arrives at the server. (default: true, only enabled for protocol 3 and above)
+	ProtoVersion       int
+	Timeout            time.Duration                            // connection timeout (default: 600ms)
+	ConnectTimeout     time.Duration                            // initial connection timeout, used during initial dial to server (default: 600ms)
+	Port               int                                      // port (default: 9042)
+	Keyspace           string                                   // initial keyspace (optional)
+	NumConns           int                                      // number of connections per host (default: 2)
+	Consistency        Consistency                              // default consistency level (default: Quorum)
+	Compressor         Compressor                               // compression algorithm (default: nil)
+	Authenticator      Authenticator                            // authenticator (default: nil)
+	AuthProvider       func(h *HostInfo) (Authenticator, error) // an authenticator factory. Can be used to create alternative authenticators (default: nil)
+	RetryPolicy        RetryPolicy                              // Default retry policy to use for queries (default: 0)
+	ConvictionPolicy   ConvictionPolicy                         // Decide whether to mark host as down based on the error and host info (default: SimpleConvictionPolicy)
+	ReconnectionPolicy ReconnectionPolicy                       // Default reconnection policy to use for reconnecting before trying to mark host as down (default: see below)
+	SocketKeepalive    time.Duration                            // The keepalive period to use, enabled if > 0 (default: 0)
+	MaxPreparedStmts   int                                      // Sets the maximum cache size for prepared statements globally for gocql (default: 1000)
+	MaxRoutingKeyInfo  int                                      // Sets the maximum cache size for query info about statements for each session (default: 1000)
+	PageSize           int                                      // Default page size to use for created sessions (default: 5000)
+	SerialConsistency  SerialConsistency                        // Sets the consistency for the serial part of queries, values can be either SERIAL or LOCAL_SERIAL (default: unset)
+	SslOpts            *SslOptions                              // SSlOpts to use for this cluster. Ignored if SecureConnectBundleFilename is set.
+	SNIConfig          *SNIConfig                               // Sets the SNIConfig from e.g. Secure Connect Bundle
+	DefaultTimestamp   bool                                     // Sends a client side timestamp for all requests which overrides the timestamp at which it arrives at the server. (default: true, only enabled for protocol 3 and above)
 	// PoolConfig configures the underlying connection pool, allowing the
 	// configuration of host selection and connection selection policies.
 	PoolConfig PoolConfig
@@ -189,13 +189,6 @@ func NewCluster(hosts ...string) *ClusterConfig {
 	return cfg
 }
 
-// Create a Cluster for using Secure Connect Bundle.
-func NewClusterSecureConnectBundle(connectBundleFilename string) *ClusterConfig {
-	cfg := NewCluster()
-	cfg.SecureConnectBundleFilename = connectBundleFilename
-	return cfg
-}
-
 // CreateSession initializes the cluster based on this config and returns a
 // session object that can be used to interact with the database.
 func (cfg *ClusterConfig) CreateSession() (*Session, error) {
@@ -208,7 +201,7 @@ func (cfg *ClusterConfig) CreateSession() (*Session, error) {
 // port will be returned.
 func (cfg *ClusterConfig) translateAddressPort(addr net.IP, port int) (net.IP, int) {
 	// Do not do translations on secure connect bundle. It is handled automatically by sni processing.
-	if cfg.SecureConnectBundleFilename != "" || cfg.AddressTranslator == nil || len(addr) == 0 {
+	if cfg.SNIConfig != nil || cfg.AddressTranslator == nil || len(addr) == 0 {
 		return addr, port
 	}
 	newAddr, newPort := cfg.AddressTranslator.Translate(addr, port)
